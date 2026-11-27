@@ -1,17 +1,7 @@
 import { useEffect, useRef } from "react";
 
-/**
- * Komponen Slot Iklan Google AdSense — Trending Global
- * Client ID: ca-pub-1195464297538058
- *
- * CARA MENGISI SLOT:
- * 1. Buka https://www.google.com/adsense/new/ → Ads → Ad units → Create ad unit
- * 2. Salin "Data ad slot" (angka, mis. 1234567890)
- * 3. Tempelkan ke prop `slot` di bawah, contoh: <AdSense slot="1234567890" />
- * Jika slot belum diisi, kotak placeholder akan tampil agar layout tetap rapi.
- */
-
 const AD_CLIENT = "ca-pub-1195464297538058";
+const DEFAULT_AD_SLOT = "9765631109";
 
 declare global {
   interface Window {
@@ -20,29 +10,54 @@ declare global {
 }
 
 interface AdSenseProps {
-  /** Nomor slot iklan dari AdSense (data-ad-slot). Kosongkan untuk placeholder. */
+  /** Nomor slot AdSense. Jika tidak diisi, gunakan slot bawaan. */
   slot?: string;
   format?: string;
   className?: string;
   label?: string;
 }
 
-export default function AdSense({ slot, format = "auto", className = "", label = "Iklan" }: AdSenseProps) {
+export default function AdSense({
+  slot = DEFAULT_AD_SLOT,
+  format = "auto",
+  className = "",
+  label = "Iklan",
+}: AdSenseProps) {
   const pushed = useRef(false);
 
   useEffect(() => {
     if (!slot || pushed.current) return;
+
+    // Siapkan antrean sebelum script AdSense selesai dimuat.
+    const adsQueue = (window.adsbygoogle = window.adsbygoogle || []);
+
+    // Muat script AdSense satu kali saja.
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'
+    );
+
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}`;
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+    }
+
     try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      adsQueue.push({});
       pushed.current = true;
     } catch {
-      /* AdSense belum siap / diblokir — abaikan */
+      // Abaikan jika AdSense belum siap atau diblokir.
     }
   }, [slot]);
 
   return (
-    <div className={`my-6 ${className}`} aria-label="Iklan">
-      <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-[#80868b]">{label}</p>
+    <div className={`my-6 ${className}`} aria-label={label}>
+      <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-[#80868b]">
+        {label}
+      </p>
+
       {slot ? (
         <ins
           className="adsbygoogle block"
@@ -58,10 +73,11 @@ export default function AdSense({ slot, format = "auto", className = "", label =
             Slot Iklan AdSense
           </span>
           <span className="text-xs text-[#80868b]">
-            Client: <code className="font-mono text-[11px]">{AD_CLIENT}</code> — isi nomor slot di <code className="font-mono text-[11px]">src/components/AdSense.tsx</code>
+            Client: <code className="font-mono text-[11px]">{AD_CLIENT}</code>
           </span>
         </div>
       )}
     </div>
   );
 }
+```
