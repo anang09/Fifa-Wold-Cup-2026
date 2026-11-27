@@ -1,7 +1,18 @@
 import { useEffect, useRef } from "react";
 
+/**
+ * Komponen Slot Iklan Google AdSense — Trending Global
+ * Client ID : ca-pub-1195464297538058
+ * Slot utama: 9765631109 ("Fifa world cup 2026")
+ *
+ * Pemakaian:
+ *   <AdSense />                       → memakai slot default 9765631109
+ *   <AdSense slot="1234567890" />     → memakai slot lain
+ */
+
 const AD_CLIENT = "ca-pub-1195464297538058";
-const DEFAULT_AD_SLOT = "9765631109";
+const DEFAULT_SLOT = "9765631109"; // Fifa world cup 2026
+const ADSENSE_SRC = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}`;
 
 declare global {
   interface Window {
@@ -9,8 +20,20 @@ declare global {
   }
 }
 
+/** Memuat script AdSense hanya sekali di seluruh halaman */
+function loadAdSenseScript() {
+  if (typeof window === "undefined") return;
+  if (document.querySelector(`script[src^="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]`)) return;
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = ADSENSE_SRC;
+  script.crossOrigin = "anonymous";
+  document.head.appendChild(script);
+}
+
 interface AdSenseProps {
-  /** Nomor slot AdSense. Jika tidak diisi, gunakan slot bawaan. */
+  /** Nomor slot iklan dari AdSense (data-ad-slot). Default: 9765631109 */
   slot?: string;
   format?: string;
   className?: string;
@@ -18,48 +41,39 @@ interface AdSenseProps {
 }
 
 export default function AdSense({
-  slot = DEFAULT_AD_SLOT,
+  slot = DEFAULT_SLOT,
   format = "auto",
   className = "",
   label = "Iklan",
 }: AdSenseProps) {
-  const pushed = useRef(false);
+  const insRef = useRef<HTMLModElement>(null);
 
   useEffect(() => {
-    if (!slot || pushed.current) return;
+    if (!slot) return;
+    loadAdSenseScript();
 
-    // Siapkan antrean sebelum script AdSense selesai dimuat.
-    const adsQueue = (window.adsbygoogle = window.adsbygoogle || []);
-
-    // Muat script AdSense satu kali saja.
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'
-    );
-
-    if (!existingScript) {
-      const script = document.createElement("script");
-      script.async = true;
-      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${AD_CLIENT}`;
-      script.crossOrigin = "anonymous";
-      document.head.appendChild(script);
-    }
+    const ins = insRef.current;
+    // Cegah push ganda (mis. React StrictMode / re-render)
+    if (!ins || ins.getAttribute("data-adsbygoogle-status")) return;
 
     try {
-      adsQueue.push({});
-      pushed.current = true;
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {
-      // Abaikan jika AdSense belum siap atau diblokir.
+      /* AdSense belum siap / diblokir adblock — abaikan */
     }
   }, [slot]);
 
   return (
-    <div className={`my-6 ${className}`} aria-label={label}>
+    <div className={`my-6 ${className}`} aria-label="Iklan">
       <p className="mb-1 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-[#80868b]">
         {label}
       </p>
 
       {slot ? (
+        // Fifa world cup 2026
         <ins
+          ref={insRef}
+          key={slot}
           className="adsbygoogle block"
           style={{ display: "block" }}
           data-ad-client={AD_CLIENT}
@@ -80,4 +94,3 @@ export default function AdSense({
     </div>
   );
 }
-```
